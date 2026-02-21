@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 // Interface for shopping list items
 interface ShoppingItem {
@@ -13,15 +13,58 @@ const items = ref<ShoppingItem[]>([])
 const newItemName = ref('')
 let nextId = 1
 
+// Callbacks for list state transitions
+const onListBecameEmpty = (): void => {
+  console.log('List became empty');
+  if ('modelContext' in navigator) {
+    navigator.modelContext.unregisterTool("remove_item");
+  }
+}
+
+const onListBecameNonEmpty = (): void => {
+  console.log('List became non-empty');
+  if ('modelContext' in navigator) {
+    navigator.modelContext.registerTool({
+      name: "remove_item",
+      description: "Removes the given item from the shopping list.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          item: {type: "string", description: "The item that should be removed from the list."}
+        },
+        required: ["item"]
+      },
+      execute: ({item}) => {
+        removeItemByName(item);
+
+        return {
+          content: [{
+            type: "text", text: JSON.stringify({
+              success: true,
+              message: "successfully removed item"
+            }, null, 2)
+          }]
+        };
+      }
+    });
+  }
+}
+
 // Reusable method to add an item by name
 const addItemByName = (name: string): void => {
   if (!name.trim()) return
+
+  const wasEmpty = items.value.length === 0
 
   items.value.push({
     id: nextId++,
     name: name.trim(),
     completed: false
   })
+
+  if (wasEmpty && items.value.length > 0) {
+    onListBecameNonEmpty()
+  }
 }
 
 // Reusable method to remove an item by name
@@ -31,7 +74,12 @@ const removeItemByName = (name: string): void => {
   )
 
   if (index !== -1) {
+    const wasNonEmpty = items.value.length > 0
     items.value.splice(index, 1)
+
+    if (wasNonEmpty && items.value.length === 0) {
+      onListBecameEmpty()
+    }
   }
 }
 
@@ -56,6 +104,36 @@ const toggleItemCompletion = (id: number): void => {
     item.completed = !item.completed
   }
 }
+
+// Lifecycle hook - triggered when App is mounted
+onMounted(() => {
+  console.log('App mounted');
+  if ('modelContext' in navigator) {
+    navigator.modelContext.registerTool({
+      name: "add_item",
+      description: "Adds the given item to the shopping list.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          item: {type: "string", description: "The item that should be added to the list."}
+        },
+        required: ["item"]
+      },
+      execute: ({item}) => {
+        addItemByName(item);
+
+        return {
+          content: [{
+            type: "text", text: JSON.stringify({
+              success: true,
+              message: "successfully added item"
+            }, null, 2)
+          }]
+        };
+      }
+    });
+  }
+})
 </script>
 
 <template>
