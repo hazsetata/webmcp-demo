@@ -1,5 +1,7 @@
 # WebMCP demo
 
+![](docs/screenshot.png)
+
 Small Vue 3, TypeScriptTailwindCSS and Vite demo-app that utilizes the new 
 [WebMCP](https://developer.chrome.com/blog/webmcp-epp) framework.
 
